@@ -30,6 +30,8 @@ import hudson.Extension;
 import hudson.model.AbstractItem;
 import hudson.views.ListViewColumnDescriptor;
 import hudson.views.ListViewColumn;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class DescriptionColumn extends ListViewColumn {
 
@@ -38,22 +40,28 @@ public class DescriptionColumn extends ListViewColumn {
     private int displayLength; //numbers of lines to display
     private int columnWidth;
     private boolean isForceWidth;
+    private boolean regex;
+    private String expression;
+    private int group;
 
     private final static String SEPARATOR = "<br/>";
     private final static String SEPARATORS_REGEX = "(?i)<br\\s*/>|<br>";
 
     @DataBoundConstructor
-    public DescriptionColumn(boolean displayName, boolean trim, int displayLength, int columnWidth, boolean isForceWidth) {
+    public DescriptionColumn(boolean displayName, boolean trim, int displayLength, int columnWidth, boolean isForceWidth, boolean regex, String expression, int group) {
         super();
         this.displayName = displayName;
         this.trim = trim;
         this.displayLength = displayLength;
         this.columnWidth = columnWidth;
         this.isForceWidth = isForceWidth;
+        this.regex = regex;
+        this.expression = expression;
+        this.group = group;
     }
 
     public DescriptionColumn() {
-        this(false, false, 1, 80, false);
+        this(false, false, 1, 80, false, false, "", 0);
     }
     
     public boolean isDisplayName() {
@@ -75,6 +83,18 @@ public class DescriptionColumn extends ListViewColumn {
     public boolean isForceWidth() {
         return isForceWidth;
     }
+    
+    public boolean isRegex() {
+        return regex;
+    }
+    
+    public String getExpression() {
+        return expression;
+    }
+    
+    public int getGroup() {
+        return group;
+    }
 
     public String getToolTip(@SuppressWarnings("rawtypes") AbstractItem job) {
         return formatDescription(job, false);
@@ -92,20 +112,26 @@ public class DescriptionColumn extends ListViewColumn {
             return "";
         }
 
-        StringBuffer sb = new StringBuffer();
-        if (!trimIt) {
-            sb.append(job.getDescription());
+        if(regex) {
+            Pattern pattern = Pattern.compile(expression);
+            Matcher matcher = pattern.matcher(job.getDescription());
+            return matcher.group(group);
         } else {
-            String[] parts = job.getDescription().split(SEPARATORS_REGEX);
-            for (int i = 0; i < displayLength && i < parts.length; i++) {
-                if (i != 0) {
-                    sb.append(SEPARATOR);
+            StringBuffer sb = new StringBuffer();
+            if (!trimIt) {
+                sb.append(job.getDescription());
+            } else {
+                String[] parts = job.getDescription().split(SEPARATORS_REGEX);
+                for (int i = 0; i < displayLength && i < parts.length; i++) {
+                    if (i != 0) {
+                        sb.append(SEPARATOR);
+                    }
+                    sb.append(parts[i]);
                 }
-                sb.append(parts[i]);
             }
-        }
 
-        return sb.toString();
+            return sb.toString();
+        }
     }
 
     @Extension
